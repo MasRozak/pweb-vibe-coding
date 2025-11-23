@@ -23,10 +23,8 @@ const sendMessage = async (req, res) => {
       return res.status(400).json({ message: 'Cannot send message to yourself' });
     }
 
-    // Prevent sending message if you are the owner
-    if (listingExists.owner.toString() === req.user.id) {
-      return res.status(400).json({ message: 'Cannot send message to your own listing' });
-    }
+    // Allow conversation to continue regardless of who is the owner
+    // Both the listing owner and the interested user can send messages
 
     const newMessage = await Message.create({
       sender: req.user.id,
@@ -133,18 +131,59 @@ const getAllConversations = async (req, res) => {
         },
       },
       {
+        $lookup: {
+          from: 'users',
+          localField: '_id.user',
+          foreignField: '_id',
+          as: 'userDetails',
+        },
+      },
+      {
+        $lookup: {
+          from: 'listings',
+          localField: '_id.listing',
+          foreignField: '_id',
+          as: 'listingDetails',
+        },
+      },
+      {
+        $unwind: {
+          path: '$userDetails',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $unwind: {
+          path: '$listingDetails',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $project: {
+          _id: 1,
+          lastMessage: 1,
+          lastMessageDate: 1,
+          unreadCount: 1,
+          user: {
+            _id: '$userDetails._id',
+            username: '$userDetails.username',
+            email: '$userDetails.email',
+          },
+          listing: {
+            _id: '$listingDetails._id',
+            title: '$listingDetails.title',
+            imageFileNames: '$listingDetails.imageFileNames',
+          },
+        },
+      },
+      {
         $sort: { lastMessageDate: -1 },
       },
     ]);
 
-    // Populate user and listing details
-    const populatedConversations = await Message.populate(messages, [
-      { path: '_id.user', select: 'username email' },
-      { path: '_id.listing', select: 'title imageFileNames' },
-    ]);
-
-    res.status(200).json(populatedConversations);
+    res.status(200).json(messages);
   } catch (error) {
+    console.error('Error in getAllConversations:', error);
     res.status(500).json({ message: error.message });
   }
 };

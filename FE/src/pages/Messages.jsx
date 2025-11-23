@@ -69,31 +69,37 @@ const Messages = () => {
       ) : (
         <div className="space-y-4">
           {conversations.map((conv) => {
-            const otherUser = conv._id.user;
-            const listing = conv._id.listing;
+            const otherUser = conv.user;
+            const listing = conv.listing;
             const imageUrl = listing?.imageFileNames?.[0]
               ? `http://localhost:5000/uploads/${listing.imageFileNames[0]}`
               : '';
 
+            // Skip if data is incomplete
+            if (!otherUser || !listing) {
+              console.warn('Incomplete conversation data:', conv);
+              return null;
+            }
+
             return (
               <Link
-                key={`${conv._id.listing}-${conv._id.user}`}
-                to={`/chat/${conv._id.listing}/${conv._id.user._id}`}
+                key={`${listing._id}-${otherUser._id}`}
+                to={`/chat/${listing._id}/${otherUser._id}`}
                 className="block bg-white shadow-md rounded-lg p-4 hover:shadow-lg transition"
               >
                 <div className="flex items-center space-x-4">
                   {imageUrl && (
                     <img
                       src={imageUrl}
-                      alt={listing?.title}
+                      alt={listing?.title || 'Listing'}
                       className="w-16 h-16 object-cover rounded"
                     />
                   )}
                   <div className="flex-1">
                     <div className="flex justify-between items-start">
                       <div>
-                        <h3 className="font-semibold text-gray-800">{otherUser?.username}</h3>
-                        <p className="text-sm text-gray-600">{listing?.title}</p>
+                        <h3 className="font-semibold text-gray-800">{otherUser?.username || 'Unknown User'}</h3>
+                        <p className="text-sm text-gray-600">{listing?.title || 'No title'}</p>
                       </div>
                       {conv.unreadCount > 0 && (
                         <span className="bg-red-500 text-white text-xs font-semibold px-2 py-1 rounded-full">
